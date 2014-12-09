@@ -34,11 +34,15 @@ class Main extends mcli.CommandLine{
     	var meta : Metal = Json.parse(File.getContent(metalJsonPath));
 
     	var tmpFolder = "_haxelibs_";
-    	try{
-    		FileSystem.deleteDirectory(tmpFolder);	
-    	}catch(e : Dynamic){
-    		Sys.println("error deleting the tmp folder " + tmpFolder);
-    	}
+        if(FileSystem.exists(tmpFolder)){
+            try{
+                FileHelper.deleteDirectory(tmpFolder);  
+            }catch(e : Dynamic){
+                Sys.println("error deleting the tmp folder " + tmpFolder);
+                Sys.exit(1);
+            }    
+        }
+    	
     	try{
 
     		FileSystem.createDirectory(tmpFolder);	
@@ -48,19 +52,30 @@ class Main extends mcli.CommandLine{
     	}
     	
 
+
     	for (libName in meta.libs.keys()){
     		var lib = meta.libs[libName];
     		var filePath = meta.classPath + "/" + libName;
-    		if(FileSystem.isDirectory(filePath) && FileSystem.exists(filePath + "/haxelib.json")){
-    			var destination = tmpFolder + "/" + libName + "/" + libName;
-    			FileSystem.createDirectory(destination);
-    			FileHelper.copyFolder(filePath, destination);
-    			FileSystem.rename(destination + "/haxelib.json", tmpFolder + "/" + libName + "/haxelib.json");
-    			ZipHelper.zipFolder(tmpFolder + "/" + libName + ".zip", tmpFolder +"/" + libName);
-    		}
+            if(!FileSystem.exists(filePath) || !FileSystem.isDirectory(filePath)){
+                Sys.println("no directory at " + filePath);
+                Sys.exit(1);
+            }
     	}
+
+        for(libName in meta.libs.keys()){
+            var lib = meta.libs[libName];
+            var filePath = meta.classPath + "/" + libName;
+            var destination = tmpFolder + "/" + libName + "/src/" + libName;
+            FileSystem.createDirectory(destination);
+            FileHelper.copyFolder(filePath, destination);
+            var haxelibFilePath = tmpFolder + "/" + libName + "/haxelib.json";
+            var haxelibJsonString = haxe.Json.stringify(HaxelibUtil.createHaxelibConfiguration(filePath, libName, meta, "test", "0.0.1"));
+            File.saveContent(haxelibFilePath, haxelibJsonString);
+            ZipHelper.zipFolder(tmpFolder + "/" + libName + ".zip", tmpFolder +"/" + libName);
+        }
 
         
     }
+
 
 }

@@ -35,4 +35,39 @@ class FileHelper{
 		return filePaths;
 	}
 
+
+	public static function deleteDirectory(path : String):Void{
+		var files = FileSystem.readDirectory(path);
+	    
+	    for( ff in files){
+	    	var filePath = path + "/" + ff;
+	    	if (FileSystem.isDirectory(filePath)){
+	    		deleteDirectory(filePath);
+    		}else{
+    			FileSystem.deleteFile(filePath);
+    		}
+		    
+	    }
+	    FileSystem.deleteDirectory(path);
+	}
+
+	public static function findInFiles(path : String, substring : String) : Bool{
+		var files = FileSystem.readDirectory(path);
+	    
+	    for( ff in files){
+	    	var filePath = path + "/" + ff;
+	    	if (FileSystem.isDirectory(filePath)){
+	    		if (findInFiles(filePath, substring)){
+	    			return true;
+	    		}
+    		}else{
+    			var content = File.getContent(filePath);
+    			if(content.indexOf(substring) != -1){
+    				return true;
+    			}
+    		}
+		    
+	    }
+	    return false;
+	}
 }
