@@ -11,9 +11,6 @@ class Main extends mcli.CommandLine{
         new mcli.Dispatch(Sys.args()).dispatch(new Main());
     }
 
-    public var loud:Bool;
-
-
     public function help()
     {
         Sys.println(this.showUsage());
