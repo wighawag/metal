@@ -24,7 +24,7 @@ class HaxelibUtil{
 			contributors : meta.contributors,
 			releasenote : releaseNote,
 			version : version,
-			url : lib.url != null ? lib.url : meta.url,
+			url : lib.url != null && lib.url != "" ? lib.url : meta.url,
 			classPath : "src",
 			dependencies : dependencies,
 			tags : lib.tags

@@ -1,6 +1,8 @@
 package metal;
 
 import haxe.Json;
+import metal.Haxelib.HaxelibDependencies;
+import metal.InputHelper;
 import sys.FileSystem;
 import sys.io.File;
 
@@ -58,6 +60,50 @@ class Main extends mcli.CommandLine{
                 Sys.exit(1);
             }
     	}
+
+        var fileNames = FileSystem.readDirectory(meta.classPath);
+        for (fileName in fileNames){
+            var filePath = meta.classPath + "/" + fileName;
+            if(FileSystem.isDirectory(filePath)){
+                if(!meta.libs.exists(fileName)){
+                    Sys.println("Library " + fileName + " not registered in metal.json/haxelib.json file");
+                    Sys.println("Please fill in the form");
+                    var descritpion = InputHelper.ask("description");
+                    var tags = InputHelper.ask("tags (separated by commas)").split(",");
+                    var dependencyStrings = InputHelper.ask("dependencies (separated by commas and specified via <name>:<version>)").split(",");
+                    var url = InputHelper.ask("url (press enter to use meta lib url)");
+                    var dependencies : HaxelibDependencies = {};
+                    for (depString in dependencyStrings){
+                        var split = depString.split(":");
+                        if(split.length > 1){
+                            dependencies[split[0]] = split[1];
+                        }else{
+                            dependencies[split[0]] = "";
+                        }
+                    }
+                    if(url == null || url == ""){
+                        meta.libs[fileName] = {
+                            description : descritpion,
+                            tags : tags,
+                            dependencies : dependencies
+                        }    
+                    }else{
+                        meta.libs[fileName] = {
+                            description : descritpion,
+                            tags : tags,
+                            dependencies : dependencies,                       
+                            url:url
+                        }
+                    }
+                    
+                    
+                }
+            }
+        }
+
+        File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
+
+        //var meta : Metal = Json.parse(File.getContent(metalJsonPath));
 
         for(libName in meta.libs.keys()){
             var lib = meta.libs[libName];
