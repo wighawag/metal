@@ -6,6 +6,8 @@ import metal.InputHelper;
 import sys.FileSystem;
 import sys.io.File;
 
+using StringTools;
+
 class Main extends mcli.CommandLine{
 
 	public static function main()
@@ -70,7 +72,13 @@ class Main extends mcli.CommandLine{
                     Sys.println("Please fill in the form");
                     var descritpion = InputHelper.ask("description");
                     var tags = InputHelper.ask("tags (separated by commas)").split(",");
+                    for (i in 0...tags.length){
+                        tags[i] = tags[i].trim();
+                    }
                     var dependencyStrings = InputHelper.ask("dependencies (separated by commas and specified via <name>:<version>)").split(",");
+                    for (i in 0...dependencyStrings.length){
+                        dependencyStrings[i] = dependencyStrings[i].trim();
+                    }
                     var url = InputHelper.ask("url (press enter to use meta lib url)");
                     var dependencies : HaxelibDependencies = {};
                     for (depString in dependencyStrings){
