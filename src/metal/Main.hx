@@ -56,6 +56,20 @@ class Main extends mcli.CommandLine{
 
     	for (libName in meta.libs.keys()){
     		var lib = meta.libs[libName];
+            var newLib  : Dynamic = {};
+            
+            if(lib.dependencies != null){
+                newLib.dependencies = lib.dependencies;
+            }
+            if(lib.tags != null){
+                newLib.tags = lib.tags;
+            }
+            if(lib.description == null){
+                newLib.description = libName;
+            }
+
+            meta.libs[libName] = newLib;
+
     		var filePath = meta.classPath + "/" + libName;
             if(!FileSystem.exists(filePath) || !FileSystem.isDirectory(filePath)){
                 Sys.println("no directory at " + filePath);
@@ -120,6 +134,8 @@ class Main extends mcli.CommandLine{
                             var content = File.getContent(folderPath + "/" + filePath);
                             if(regex.match(content)){
                                 trace("found " + libName + " in " + otherLibName);
+                                var metalib = meta.libs[otherLibName];
+                                metalib.dependencies.set(libName, meta.last_version); //TODO check version is correct here
                             }
                         }
                     }
@@ -133,6 +149,15 @@ class Main extends mcli.CommandLine{
 
         for(libName in meta.libs.keys()){
             var lib = meta.libs[libName];
+            if(lib.dependencies == null){
+                lib.dependencies = {};
+            }
+            if(lib.tags == null){
+                lib.tags = [];
+            }
+            if(lib.description == null){
+                lib.description = libName;
+            }
             var filePath = meta.classPath + "/" + libName;
             var destination = tmpFolder + "/" + libName + "/src/" + libName;
             FileSystem.createDirectory(destination);

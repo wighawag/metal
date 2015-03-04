@@ -4,7 +4,7 @@ import haxe.DynamicAccess;
 typedef SubLib = {
 	tags : Array<String>,
 	description : String,
-	dependencies : DynamicAccess<String>,
+	?dependencies : DynamicAccess<String>,
 	?url:String
 };
 
