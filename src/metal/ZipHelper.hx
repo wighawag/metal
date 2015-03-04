@@ -5,6 +5,7 @@ import sys.io.File;
 import format.zip.Writer;
 import format.zip.Data;
 import haxe.io.Bytes;
+import haxe.crypto.Crc32;
 
 class ZipHelper{
 	
@@ -52,7 +53,7 @@ class ZipHelper{
 				data:bytes,
 				dataSize:bytes != null ? bytes.length : 0,
 				compressed:false,
-				crc32:0,
+				crc32:bytes != null ? Crc32.make(bytes) : 0,
 				extraFields:new List()
 			}
 
