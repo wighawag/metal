@@ -5,6 +5,7 @@ import metal.Haxelib.HaxelibDependencies;
 import metal.InputHelper;
 import sys.FileSystem;
 import sys.io.File;
+import sys.io.Process;
 
 using StringTools;
 
@@ -165,7 +166,24 @@ class Main extends mcli.CommandLine{
             var haxelibFilePath = tmpFolder + "/" + libName + "/haxelib.json";
             var haxelibJsonString = haxe.Json.stringify(HaxelibUtil.createHaxelibConfiguration(filePath, libName, meta, "test", "0.0.1"), "  ");
             File.saveContent(haxelibFilePath, haxelibJsonString);
-            ZipHelper.zipFolder(tmpFolder + "/" + libName + ".zip", tmpFolder +"/" + libName);
+            var zipPath = tmpFolder + "/" + libName + ".zip";
+            ZipHelper.zipFolder(zipPath, tmpFolder +"/" + libName);
+
+            var process = new Process("haxelib", ["submit", zipPath]);
+            var output = process.stdout.readAll().toString();
+            var errorOutput = process.stderr.readAll().toString();
+            
+            //TODO
+            //process.stdin.writeString("n\n"); 
+            //output += process.stdout.readAll().toString();
+            
+            
+            var exitCode = process.exitCode();
+            if(exitCode != 0){
+                trace("exit code == " + exitCode + " while submitting " + zipPath);
+                trace(output);
+                trace(errorOutput);
+            }
         }
 
         
