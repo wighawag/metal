@@ -11,7 +11,8 @@ typedef SubLib = {
 typedef Metal = {
 	license : String,
 	contributors : Array<String>,
-	last_version : String,
+	version : String,
+	releaseNote:String,
 	url : String,
 	libs : DynamicAccess<SubLib>,
 	classPath : String

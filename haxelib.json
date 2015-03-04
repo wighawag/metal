@@ -10,6 +10,7 @@
 	"classPath":"src",
 	"dependencies":{
 		"format":"3.0.5",
-		"mcli":"0.1.3"
+		"mcli":"0.1.3",
+		"thx.semver":"0.2.1"
 	}
 }

@@ -7,6 +7,8 @@ import sys.FileSystem;
 import sys.io.File;
 import sys.io.Process;
 
+import thx.semver.Version;
+
 using StringTools;
 
 class Main extends mcli.CommandLine{
@@ -124,6 +126,23 @@ class Main extends mcli.CommandLine{
             }
         }
 
+        var releaseNote = InputHelper.ask("releaseNote:");
+        
+        var newVersion : Version = meta.version;
+        while (newVersion.equals(meta.version)){
+            var change = InputHelper.ask("What king of change is it (patch | minor | major) ?");
+            newVersion = switch(change){
+                case "patch": ( meta.version : Version).nextPatch();
+                case "minor": ( meta.version : Version).nextMinor();
+                case "major": ( meta.version : Version).nextMajor();
+                default: meta.version;
+            }
+        }
+        meta.version = newVersion.toString();
+        meta.releaseNote = releaseNote;
+        
+        
+
         for(libName in meta.libs.keys()){
             var regex = new EReg("\\b" + libName + "\\..+", "");
             for(otherLibName in meta.libs.keys()){
@@ -136,7 +155,7 @@ class Main extends mcli.CommandLine{
                             if(regex.match(content)){
                                 trace("found " + libName + " in " + otherLibName);
                                 var metalib = meta.libs[otherLibName];
-                                metalib.dependencies.set(libName, meta.last_version); //TODO check version is correct here
+                                metalib.dependencies.set(libName, meta.version); //TODO check version is correct here
                             }
                         }
                     }
@@ -164,7 +183,7 @@ class Main extends mcli.CommandLine{
             FileSystem.createDirectory(destination);
             FileHelper.copyFolder(filePath, destination);
             var haxelibFilePath = tmpFolder + "/" + libName + "/haxelib.json";
-            var haxelibJsonString = haxe.Json.stringify(HaxelibUtil.createHaxelibConfiguration(filePath, libName, meta, "test", "0.0.1"), "  ");
+            var haxelibJsonString = haxe.Json.stringify(HaxelibUtil.createHaxelibConfiguration(filePath, libName, meta, meta.releaseNote, meta.version), "  ");
             File.saveContent(haxelibFilePath, haxelibJsonString);
             var zipPath = tmpFolder + "/" + libName + ".zip";
             ZipHelper.zipFolder(zipPath, tmpFolder +"/" + libName);
@@ -176,7 +195,7 @@ class Main extends mcli.CommandLine{
             //TODO
             //process.stdin.writeString("n\n"); 
             //output += process.stdout.readAll().toString();
-            
+
             
             var exitCode = process.exitCode();
             if(exitCode != 0){
