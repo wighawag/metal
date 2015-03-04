@@ -109,6 +109,24 @@ class Main extends mcli.CommandLine{
             }
         }
 
+        for(libName in meta.libs.keys()){
+            var regex = new EReg("\\b" + libName + "\\..+", "");
+            for(otherLibName in meta.libs.keys()){
+                if(otherLibName != libName){
+                    var folderPath = meta.classPath + "/" + otherLibName;
+                    var filePaths = FileHelper.recursiveReadFolder(folderPath);
+                    for(filePath in filePaths){
+                        if(StringTools.endsWith(filePath, ".hx")){
+                            var content = File.getContent(folderPath + "/" + filePath);
+                            if(regex.match(content)){
+                                trace("found " + libName + " in " + otherLibName);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
 
         //var meta : Metal = Json.parse(File.getContent(metalJsonPath));
