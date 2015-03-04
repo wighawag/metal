@@ -126,11 +126,11 @@ class Main extends mcli.CommandLine{
             }
         }
 
-        var releaseNote = InputHelper.ask("releaseNote:");
+        var releaseNote = InputHelper.ask("releaseNote");
         
         var newVersion : Version = meta.version;
         while (newVersion.equals(meta.version)){
-            var change = InputHelper.ask("What king of change is it (patch | minor | major) ?");
+            var change = InputHelper.ask("What king of change is it? (patch | minor | major)");
             newVersion = switch(change){
                 case "patch": ( meta.version : Version).nextPatch();
                 case "minor": ( meta.version : Version).nextMinor();
@@ -188,20 +188,61 @@ class Main extends mcli.CommandLine{
             var zipPath = tmpFolder + "/" + libName + ".zip";
             ZipHelper.zipFolder(zipPath, tmpFolder +"/" + libName);
 
-            var process = new Process("haxelib", ["submit", zipPath]);
-            var output = process.stdout.readAll().toString();
-            var errorOutput = process.stderr.readAll().toString();
-            
-            //TODO
-            //process.stdin.writeString("n\n"); 
-            //output += process.stdout.readAll().toString();
 
+            var password = InputHelper.ask("password",true);
+            trace("submiting to haxelib ...");
+            
+            var process = new Process("haxelib", ["submit", zipPath]);
+            process.stdin.writeString(password + "\n"); 
+            process.stdin.flush();
+
+            trace("password submited");
+
+            var outputLine = process.stderr.readLine();
+            while(outputLine != null){
+                trace(outputLine);
+                outputLine = process.stderr.readLine();
+            }
+            
+            // if(outputLine.indexOf("Invalid") != -1){
+            //     process.kill();
+            //     trace("invalid password");
+            //     Sys.exit(1);
+            //  }
+
+            // outputLine = process.stdout.readLine();
+            // if(outputLine.indexOf("Invalid") != -1){
+            //     process.kill();
+            //     trace("invalid password");
+            //     Sys.exit(1);
+            //  }
+
+            // var errorLine = process.stderr.readLine();
+            // if(errorLine.indexOf("Invalid") != -1){
+            //     process.kill();
+            //     trace("invalid password");
+            //     Sys.exit(1);
+            // }
+
+            process.kill();
+            // var output = process.stdout.readAll().toString();
+            // if(output.indexOf("Invalid") != -1){
+            //     Sys.exit(1);
+            // }
+
+            // var errorOutput = process.stderr.readAll().toString();
+            // if(errorOutput.indexOf("Invalid") != -1){
+            //     Sys.exit(1);
+            // }
+
+            // process.close();
+            trace("process completed");
             
             var exitCode = process.exitCode();
             if(exitCode != 0){
                 trace("exit code == " + exitCode + " while submitting " + zipPath);
-                trace(output);
-                trace(errorOutput);
+                // trace(output);
+                // trace(errorOutput);
             }
         }
 
