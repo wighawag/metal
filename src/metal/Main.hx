@@ -120,7 +120,7 @@ class Main extends mcli.CommandLine{
             FileSystem.createDirectory(destination);
             FileHelper.copyFolder(filePath, destination);
             var haxelibFilePath = tmpFolder + "/" + libName + "/haxelib.json";
-            var haxelibJsonString = haxe.Json.stringify(HaxelibUtil.createHaxelibConfiguration(filePath, libName, meta, "test", "0.0.1"));
+            var haxelibJsonString = haxe.Json.stringify(HaxelibUtil.createHaxelibConfiguration(filePath, libName, meta, "test", "0.0.1"), "  ");
             File.saveContent(haxelibFilePath, haxelibJsonString);
             ZipHelper.zipFolder(tmpFolder + "/" + libName + ".zip", tmpFolder +"/" + libName);
         }
