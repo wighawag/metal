@@ -118,6 +118,12 @@ class Main extends mcli.CommandLine{
             }
         }
 
+        var circularFinder = new CircularDependencies(meta);
+        if(circularFinder.isThereAny()){
+            trace("found circular dependencies");
+            Sys.exit(1);
+        }
+
        
 
         //var meta : Metal = Json.parse(File.getContent(metalJsonPath));
