@@ -8,16 +8,6 @@ class HaxelibUtil{
 	public static function createHaxelibConfiguration(path : String, libName : String, meta : Metal, releaseNote : String, version : String):Haxelib{
 		var lib = meta.libs[libName];
 
-		//TODO remove : DONE already
-		// var dependencies : HaxelibDependencies= lib.dependencies;
-		// for (otherLibName in meta.libs.keys()){
-		// 	if(otherLibName != libName){
-		// 		if(FileHelper.findInFiles(path,otherLibName + ".")){
-		// 			dependencies[otherLibName] = version;
-		// 		}
-		// 	}
-		// }
-
 		return {
 			name : libName,
 			license : meta.license,

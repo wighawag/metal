@@ -3,11 +3,14 @@ package metal;
 import haxe.Json;
 import metal.Haxelib.HaxelibDependencies;
 import metal.InputHelper;
+import metal.Metal.SubLib;
 import sys.FileSystem;
 import sys.io.File;
 import sys.io.Process;
 
 import thx.semver.Version;
+
+import haxe.io.Bytes;
 
 using StringTools;
 
@@ -57,26 +60,12 @@ class Main extends mcli.CommandLine{
     	
 
 
-    	for (libName in meta.libs.keys()){
-    		var lib = meta.libs[libName];
-            var newLib  : Dynamic = {};
-            
-            if(lib.dependencies != null){
-                newLib.dependencies = lib.dependencies;
-            }
-            if(lib.tags != null){
-                newLib.tags = lib.tags;
-            }
-            if(lib.description == null){
-                newLib.description = libName;
-            }
-
-            meta.libs[libName] = newLib;
-
+        var keys = meta.libs.keys();
+    	for (libName in keys){
     		var filePath = meta.classPath + "/" + libName;
             if(!FileSystem.exists(filePath) || !FileSystem.isDirectory(filePath)){
-                Sys.println("no directory at " + filePath);
-                Sys.exit(1);
+                Sys.println("no directory exist for  " + libName + " at " + filePath + " , removing the lib from  the list");
+                meta.libs.remove(libName);
             }
     	}
 
@@ -84,45 +73,7 @@ class Main extends mcli.CommandLine{
         for (fileName in fileNames){
             var filePath = meta.classPath + "/" + fileName;
             if(FileSystem.isDirectory(filePath)){
-                if(!meta.libs.exists(fileName)){
-                    Sys.println("Library " + fileName + " not registered in metal.json/haxelib.json file");
-                    Sys.println("Please fill in the form");
-                    var descritpion = InputHelper.ask("description");
-                    var tags = InputHelper.ask("tags (separated by commas)").split(",");
-                    for (i in 0...tags.length){
-                        tags[i] = tags[i].trim();
-                    }
-                    var dependencyStrings = InputHelper.ask("dependencies (separated by commas and specified via <name>:<version>)").split(",");
-                    for (i in 0...dependencyStrings.length){
-                        dependencyStrings[i] = dependencyStrings[i].trim();
-                    }
-                    var url = InputHelper.ask("url (press enter to use meta lib url)");
-                    var dependencies : HaxelibDependencies = {};
-                    for (depString in dependencyStrings){
-                        var split = depString.split(":");
-                        if(split.length > 1){
-                            dependencies[split[0]] = split[1];
-                        }else{
-                            dependencies[split[0]] = "";
-                        }
-                    }
-                    if(url == null || url == ""){
-                        meta.libs[fileName] = {
-                            description : descritpion,
-                            tags : tags,
-                            dependencies : dependencies
-                        }    
-                    }else{
-                        meta.libs[fileName] = {
-                            description : descritpion,
-                            tags : tags,
-                            dependencies : dependencies,                       
-                            url:url
-                        }
-                    }
-                    
-                    
-                }
+                meta.libs[fileName] = fillInDetails(fileName, meta.libs[fileName]);
             }
         }
 
@@ -141,7 +92,8 @@ class Main extends mcli.CommandLine{
         meta.version = newVersion.toString();
         meta.releaseNote = releaseNote;
         
-        
+        File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
+
 
         for(libName in meta.libs.keys()){
             var regex = new EReg("\\b" + libName + "\\..+", "");
@@ -153,8 +105,11 @@ class Main extends mcli.CommandLine{
                         if(StringTools.endsWith(filePath, ".hx")){
                             var content = File.getContent(folderPath + "/" + filePath);
                             if(regex.match(content)){
-                                trace("found " + libName + " in " + otherLibName);
+                                //trace("found " + libName + " in " + otherLibName);
                                 var metalib = meta.libs[otherLibName];
+                                if(metalib.dependencies == null){
+                                    metalib.dependencies = {};
+                                }
                                 metalib.dependencies.set(libName, meta.version); //TODO check version is correct here
                             }
                         }
@@ -163,20 +118,16 @@ class Main extends mcli.CommandLine{
             }
         }
 
-        File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
+       
 
         //var meta : Metal = Json.parse(File.getContent(metalJsonPath));
 
+
         for(libName in meta.libs.keys()){
+            //trace("generating haxelib zip for " + libName + "...");
             var lib = meta.libs[libName];
             if(lib.dependencies == null){
                 lib.dependencies = {};
-            }
-            if(lib.tags == null){
-                lib.tags = [];
-            }
-            if(lib.description == null){
-                lib.description = libName;
             }
             var filePath = meta.classPath + "/" + libName;
             var destination = tmpFolder + "/" + libName + "/src/" + libName;
@@ -187,66 +138,89 @@ class Main extends mcli.CommandLine{
             File.saveContent(haxelibFilePath, haxelibJsonString);
             var zipPath = tmpFolder + "/" + libName + ".zip";
             ZipHelper.zipFolder(zipPath, tmpFolder +"/" + libName);
-
-
-            var password = InputHelper.ask("password",true);
-            trace("submiting to haxelib ...");
             
-            var process = new Process("haxelib", ["submit", zipPath]);
-            process.stdin.writeString(password + "\n"); 
-            process.stdin.flush();
-
-            trace("password submited");
-
-            var outputLine = process.stderr.readLine();
-            while(outputLine != null){
-                trace(outputLine);
-                outputLine = process.stderr.readLine();
-            }
-            
-            // if(outputLine.indexOf("Invalid") != -1){
-            //     process.kill();
-            //     trace("invalid password");
-            //     Sys.exit(1);
-            //  }
-
-            // outputLine = process.stdout.readLine();
-            // if(outputLine.indexOf("Invalid") != -1){
-            //     process.kill();
-            //     trace("invalid password");
-            //     Sys.exit(1);
-            //  }
-
-            // var errorLine = process.stderr.readLine();
-            // if(errorLine.indexOf("Invalid") != -1){
-            //     process.kill();
-            //     trace("invalid password");
-            //     Sys.exit(1);
-            // }
-
-            process.kill();
-            // var output = process.stdout.readAll().toString();
-            // if(output.indexOf("Invalid") != -1){
-            //     Sys.exit(1);
-            // }
-
-            // var errorOutput = process.stderr.readAll().toString();
-            // if(errorOutput.indexOf("Invalid") != -1){
-            //     Sys.exit(1);
-            // }
-
-            // process.close();
-            trace("process completed");
-            
-            var exitCode = process.exitCode();
-            if(exitCode != 0){
-                trace("exit code == " + exitCode + " while submitting " + zipPath);
-                // trace(output);
-                // trace(errorOutput);
-            }
         }
 
+        var password = InputHelper.ask("Password ",true);
+
+        for(libName in meta.libs.keys()){
+            var zipPath = tmpFolder + "/" + libName + ".zip";
+
+            trace("submiting " + libName + " to haxelib ...");
+            var process = new Process("haxelib", ["submit", zipPath, password]);
+            
+            var outputBytes = Bytes.alloc(100);
+            var numBytes = process.stdout.readBytes(outputBytes,0,100);
+            if (outputBytes.toString().indexOf("Invalid password") != -1){
+                trace("wrong password");
+                process.kill();
+                Sys.exit(1);
+            }else{
+                trace(process.stdout.readAll().toString());
+                trace("... done");
+                var exitCode = process.exitCode();
+                if(exitCode != 0){
+                    trace("exit code == " + exitCode + " while submitting " + zipPath);
+                    Sys.exit(1);
+                }
+            }
+
+        }
         
+    }
+
+    public static  function fillInDetails(name : String, lib : SubLib) : SubLib{
+
+        var newLib = lib;
+        if(newLib == null){
+            Sys.println("Library " + name + " not registered in metal.json/haxelib.json file");
+            Sys.println("Please fill in the form");
+            newLib = {
+                description : null,
+                tags : null
+            };
+        }else if(newLib.description == null || newLib.tags == null){
+            Sys.println("library " + name + " info not completed, please complete");
+        }
+
+        if(newLib.description == null){
+            newLib.description = InputHelper.ask("description");    
+        }
+        
+        if(newLib.tags == null){
+            var tags = InputHelper.ask("tags (separated by commas)").split(",");
+            for (i in 0...tags.length){
+                tags[i] = tags[i].trim();
+            }    
+            newLib.tags = tags;
+        }
+        
+        if(lib == null){
+            var dependencyStrings = InputHelper.ask("dependencies (separated by commas and specified via <name>:<version>)").split(",");
+            for (i in 0...dependencyStrings.length){
+                dependencyStrings[i] = dependencyStrings[i].trim();
+            }
+            
+            var dependencies : HaxelibDependencies = {};
+            for (depString in dependencyStrings){
+                var split = depString.split(":");
+                if(split.length > 1){
+                    dependencies[split[0]] = split[1];
+                }else{
+                    dependencies[split[0]] = "";
+                }
+            }    
+            newLib.dependencies = dependencies;
+        }
+        
+        if(lib == null){
+            var url = InputHelper.ask("url (press enter to use meta lib url)");
+            if(url != null && url != ""){
+                newLib.url = url;
+            }
+        }
+        
+        return newLib;
     }
 
 

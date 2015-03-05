@@ -58,7 +58,7 @@ class ZipHelper{
 			}
 
 
-			trace(entry.fileName);
+			//trace(entry.fileName);
 			entries.add(entry);
 		}
 		
