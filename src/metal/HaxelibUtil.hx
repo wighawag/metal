@@ -5,7 +5,7 @@ import metal.Haxelib;
 import metal.Metal.SubLib;
 
 class HaxelibUtil{
-	public static function createHaxelibConfiguration(path : String, libName : String, meta : Metal, releaseNote : String, version : String):Haxelib{
+	public static function createHaxelibConfiguration(libName : String, meta : Metal, releaseNote : String, version : String):Haxelib{
 		var lib = meta.libs[libName];
 
 		return {

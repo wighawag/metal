@@ -1,19 +1,20 @@
 package metal;
 
 import haxe.DynamicAccess;
+import metal.Haxelib;
 
 class CircularLib{
-	public var name(default,null):String;
+	public var haxelib(default,null) : Haxelib;
 	private var dependencies:Array<String>;
 	public var numDependencies(get,null): Int;
 	function get_numDependencies() : Int{
 		return dependencies.length;
 	}
 
-	public function new(name : String, dependenciesSet : DynamicAccess<String>){
-		this.name = name;
+	public function new(haxelib : Haxelib){
+		this.haxelib = haxelib;
 		this.dependencies = new Array();
-		for (dependency in dependenciesSet.keys()){
+		for (dependency in haxelib.dependencies.keys()){
 			//trace("depends on " + dependency);
 			dependencies.push(dependency);
 		}
@@ -31,21 +32,21 @@ class CircularLib{
 
 }
 
-class CircularDependencies{
+class DependenciesOrdering{
 
 	var meta : Metal;
 
 	var libs : Map<String,CircularLib>;
-	public function new(meta : Metal){
+	public function new(haxelibs : Array<Haxelib>){
 		libs = new Map();
-		for (libName in meta.libs.keys()){
-			//trace("adding " + libName);
-			var lib = meta.libs[libName];
-			libs.set(libName, new CircularLib(libName, lib.dependencies));
+		for (haxelib in haxelibs){
+			//trace("adding " + haxelib.name);
+			libs.set(haxelib.name, new CircularLib(haxelib));
 		}
 	}
 
-	public function isThereAny() : Bool{
+	public function order() : Array<Haxelib>{
+		var haxelibs = new Array<Haxelib>();
 		var num : Int = 0;
 		var found = true;
 		while(found){
@@ -55,6 +56,7 @@ class CircularDependencies{
 				var lib = libs[libName];
 				if(lib.numDependencies == 0){
 					libs.remove(libName);
+					haxelibs.push(lib.haxelib);
 					toRemove.push(libName);
 					//trace("removing " + libName + " as it has no dependencies");
 					found = true;
@@ -75,6 +77,18 @@ class CircularDependencies{
 			}
 		}
 		
-		return num > 0;
+		if (num > 0){
+			return null;
+		}else{
+			return haxelibs;
+		}
+	}
+
+	public function getCirculars() : Array<String>{
+		var list = new Array<String>();
+		for(libName in libs.keys()){
+			list.push(libName);
+		}
+		return list;
 	}
 }

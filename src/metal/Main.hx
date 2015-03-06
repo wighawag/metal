@@ -2,6 +2,7 @@ package metal;
 
 import haxe.Json;
 import metal.Haxelib.HaxelibDependencies;
+import metal.Haxelib;
 import metal.InputHelper;
 import metal.Metal.SubLib;
 import sys.FileSystem;
@@ -77,9 +78,50 @@ class Main extends mcli.CommandLine{
             }
         }
 
-        //TODO : from that point use full haxelib structure 
 
-        var releaseNote = InputHelper.ask("releaseNote");
+
+       
+
+        var dummyReleaseNote = "";
+        var dummyVersion = "";
+
+        var haxelibs = new Array<Haxelib>();
+
+        for(libName in meta.libs.keys()){
+            var haxelib = HaxelibUtil.createHaxelibConfiguration(libName, meta,dummyReleaseNote, dummyVersion);//dummy release note/version as this will be change after getting input from user
+            haxelibs.push(haxelib);
+        } 
+
+        for(haxelib in haxelibs){
+            var regex = new EReg("\\b" + haxelib.name + "\\..+", "");
+            for(otherHaxelib in haxelibs){
+                if(otherHaxelib.name != haxelib.name){
+                    var folderPath = meta.classPath + "/" + otherHaxelib.name;
+                    var filePaths = FileHelper.recursiveReadFolder(folderPath);
+                    for(filePath in filePaths){
+                        if(StringTools.endsWith(filePath, ".hx")){
+                            var content = File.getContent(folderPath + "/" + filePath);
+                            if(regex.match(content)){
+                                //trace("found " + haxelib.name + " in " + otherHaxelib.name);
+                                if(otherHaxelib.dependencies == null){
+                                    otherHaxelib.dependencies = {};
+                                }
+                                otherHaxelib.dependencies.set(haxelib.name, dummyVersion); //dummy
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        var ordering = new DependenciesOrdering(haxelibs);
+        haxelibs = ordering.order();
+        if(haxelibs == null){
+            trace("found circular dependencies " + ordering.getCirculars());
+            Sys.exit(1);
+        }
+
+         var releaseNote = InputHelper.ask("releaseNote");
         
         var newVersion : Version = meta.version;
         while (newVersion.equals(meta.version)){
@@ -92,70 +134,48 @@ class Main extends mcli.CommandLine{
             }
         }
         meta.version = newVersion.toString();
-        meta.releaseNote = releaseNote;
+        meta.releasenote = releaseNote;
         
         File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
 
+        var password = InputHelper.ask("Password ",true);
 
-        for(libName in meta.libs.keys()){
-            var regex = new EReg("\\b" + libName + "\\..+", "");
-            for(otherLibName in meta.libs.keys()){
-                if(otherLibName != libName){
-                    var folderPath = meta.classPath + "/" + otherLibName;
-                    var filePaths = FileHelper.recursiveReadFolder(folderPath);
-                    for(filePath in filePaths){
-                        if(StringTools.endsWith(filePath, ".hx")){
-                            var content = File.getContent(folderPath + "/" + filePath);
-                            if(regex.match(content)){
-                                //trace("found " + libName + " in " + otherLibName);
-                                var metalib = meta.libs[otherLibName];
-                                if(metalib.dependencies == null){
-                                    metalib.dependencies = {};
-                                }
-                                metalib.dependencies.set(libName, meta.version); //TODO check version is correct here
-                            }
-                        }
+
+
+
+
+        for(haxelib in haxelibs){
+            //trace("generating haxelib zip for " + haxelib.name + "...");
+            if(haxelib.dependencies == null){
+                haxelib.dependencies = {};
+            }else{
+                //reset to new version
+                for(dependencyName in haxelib.dependencies.keys()){
+                    if(meta.libs.exists(dependencyName)){
+                        haxelib.dependencies.set(dependencyName, meta.version);
                     }
                 }
             }
-        }
-
-        //TODO need to order them so they can be sent to haxelib server without dependencies issues
-        var circularFinder = new CircularDependencies(meta);
-        if(circularFinder.isThereAny()){
-            trace("found circular dependencies");
-            Sys.exit(1);
+            haxelib.version = meta.version;
+            haxelib.releasenote = meta.releasenote;
+            var filePath = meta.classPath + "/" + haxelib.name;
+            var destination = tmpFolder + "/" + haxelib.name + "/src/" + haxelib.name;
+            FileSystem.createDirectory(destination);
+            FileHelper.copyFolder(filePath, destination);
+            var haxelibFilePath = tmpFolder + "/" + haxelib.name + "/haxelib.json";
+            var haxelibJsonString = haxe.Json.stringify(haxelib, "  ");
+            File.saveContent(haxelibFilePath, haxelibJsonString);
+            var zipPath = tmpFolder + "/" + haxelib.name + ".zip";
+            ZipHelper.zipFolder(zipPath, tmpFolder +"/" + haxelib.name);
+            
         }
 
        
 
-        //var meta : Metal = Json.parse(File.getContent(metalJsonPath));
+        for(haxelib in haxelibs){
+            var zipPath = tmpFolder + "/" + haxelib.name + ".zip";
 
-
-        for(libName in meta.libs.keys()){
-            //trace("generating haxelib zip for " + libName + "...");
-            var lib = meta.libs[libName];
-            if(lib.dependencies == null){
-                lib.dependencies = {};
-            }
-            var filePath = meta.classPath + "/" + libName;
-            var destination = tmpFolder + "/" + libName + "/src/" + libName;
-            FileSystem.createDirectory(destination);
-            FileHelper.copyFolder(filePath, destination);
-            var haxelibFilePath = tmpFolder + "/" + libName + "/haxelib.json";
-            var haxelibJsonString = haxe.Json.stringify(HaxelibUtil.createHaxelibConfiguration(filePath, libName, meta, meta.releaseNote, meta.version), "  ");
-            File.saveContent(haxelibFilePath, haxelibJsonString);
-            var zipPath = tmpFolder + "/" + libName + ".zip";
-            ZipHelper.zipFolder(zipPath, tmpFolder +"/" + libName);
-            
-        }
-
-        var password = InputHelper.ask("Password ",true);
-
-        for(libName in meta.libs.keys()){
-            var zipPath = tmpFolder + "/" + libName + ".zip";
-
-            trace("submiting " + libName + " to haxelib ...");
+            trace("submiting " + haxelib.name + " to haxelib ...");
             var process = new Process("haxelib", ["submit", zipPath, password]);
             
             var outputBytes = Bytes.alloc(100);

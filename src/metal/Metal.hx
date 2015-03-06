@@ -12,7 +12,7 @@ typedef Metal = {
 	license : String,
 	contributors : Array<String>,
 	version : String,
-	releaseNote:String,
+	releasenote:String,
 	url : String,
 	libs : DynamicAccess<SubLib>,
 	classPath : String
