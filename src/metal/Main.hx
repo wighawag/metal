@@ -77,6 +77,8 @@ class Main extends mcli.CommandLine{
             }
         }
 
+        //TODO : from that point use full haxelib structure 
+
         var releaseNote = InputHelper.ask("releaseNote");
         
         var newVersion : Version = meta.version;
@@ -118,6 +120,7 @@ class Main extends mcli.CommandLine{
             }
         }
 
+        //TODO need to order them so they can be sent to haxelib server without dependencies issues
         var circularFinder = new CircularDependencies(meta);
         if(circularFinder.isThereAny()){
             trace("found circular dependencies");
