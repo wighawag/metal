@@ -9,6 +9,7 @@ typedef SubLib = {
 };
 
 typedef Metal = {
+	name : String,
 	license : String,
 	contributors : Array<String>,
 	version : String,

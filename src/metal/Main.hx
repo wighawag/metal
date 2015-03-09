@@ -15,6 +15,13 @@ import haxe.io.Bytes;
 
 using StringTools;
 
+enum ReleaseType
+{
+Major;
+Minor;
+Patch;
+}
+
 class Main extends mcli.CommandLine{
 
 	public static function main()
@@ -22,6 +29,21 @@ class Main extends mcli.CommandLine{
         new mcli.Dispatch(Sys.args()).dispatch(new Main());
     }
 
+    /**
+        release note
+        @alias m
+    **/
+    public var message:String;
+
+    /**
+        release type (major|minor|patch) 
+        @alias t
+    **/
+    public var type:ReleaseType;
+
+    /**
+        Show this message.
+    **/
     public function help()
     {
         Sys.println(this.showUsage());
@@ -34,8 +56,7 @@ class Main extends mcli.CommandLine{
     	if(!FileSystem.exists(metalJsonPath)){
     		metalJsonPath = "haxelib.json";
     		if(!FileSystem.exists(metalJsonPath)){
-    			Sys.println("cannot find metal.json or haxelib.json in current folder");
-    			Sys.exit(1);
+    			error("cannot find metal.json or haxelib.json in current folder");
     		}
     	} 
 
@@ -46,8 +67,7 @@ class Main extends mcli.CommandLine{
             try{
                 FileHelper.deleteDirectory(tmpFolder);  
             }catch(e : Dynamic){
-                Sys.println("error deleting the tmp folder " + tmpFolder);
-                Sys.exit(1);
+                error("error deleting the tmp folder " + tmpFolder);
             }    
         }
     	
@@ -55,8 +75,7 @@ class Main extends mcli.CommandLine{
 
     		FileSystem.createDirectory(tmpFolder);	
     	}catch(e: Dynamic){
-    		Sys.println("error creating the tmp folder " + tmpFolder);
-    		Sys.exit(1);
+    		error("error creating the tmp folder " + tmpFolder);
     	}
     	
 
@@ -78,6 +97,7 @@ class Main extends mcli.CommandLine{
             }
         }
 
+        File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
 
 
        
@@ -117,26 +137,37 @@ class Main extends mcli.CommandLine{
         var ordering = new DependenciesOrdering(haxelibs);
         haxelibs = ordering.order();
         if(haxelibs == null){
-            trace("found circular dependencies " + ordering.getCirculars());
-            Sys.exit(1);
+            error("found circular dependencies " + ordering.getCirculars());
         }
 
-         var releaseNote = InputHelper.ask("releaseNote");
+        var releaseNote = message != null ? message : InputHelper.ask("releaseNote");
         
+
+
         var newVersion : Version = meta.version;
         while (newVersion.equals(meta.version)){
-            var change = InputHelper.ask("What king of change is it? (patch | minor | major)");
+            var change = 
+            if(type!= null){
+                switch(type){
+                    case Major : "major";
+                    case Minor : "minor";
+                    case Patch : "patch";
+                }
+            }else{
+                InputHelper.ask("What king of change is it? (patch | minor | major)");
+            }    
+            
             newVersion = switch(change){
                 case "patch": ( meta.version : Version).nextPatch();
                 case "minor": ( meta.version : Version).nextMinor();
                 case "major": ( meta.version : Version).nextMajor();
-                default: meta.version;
+                default: trace("Please enter one of the following : (patch | minor | major)"); meta.version;
             }
         }
         meta.version = newVersion.toString();
         meta.releasenote = releaseNote;
         
-        File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
+        
 
         var password = InputHelper.ask("Password ",true);
 
@@ -172,30 +203,62 @@ class Main extends mcli.CommandLine{
 
        
 
+        var first = true;
         for(haxelib in haxelibs){
             var zipPath = tmpFolder + "/" + haxelib.name + ".zip";
 
-            trace("submiting " + haxelib.name + " to haxelib ...");
+            trace("submiting " + haxelib.name + " @ " + haxelib.version + " to haxelib ...");
             var process = new Process("haxelib", ["submit", zipPath, password]);
             
             var outputBytes = Bytes.alloc(100);
             var numBytes = process.stdout.readBytes(outputBytes,0,100);
             if (outputBytes.toString().indexOf("Invalid password") != -1){
-                trace("wrong password");
                 process.kill();
-                Sys.exit(1);
+                errorInTheMiddle("wrong password",meta,metalJsonPath,!first);
             }else{
                 trace(process.stdout.readAll().toString());
                 trace("... done");
                 var exitCode = process.exitCode();
                 if(exitCode != 0){
-                    trace("exit code == " + exitCode + " while submitting " + zipPath);
-                    Sys.exit(1);
+                    errorInTheMiddle("exit code == " + exitCode + " while submitting " + zipPath,meta,metalJsonPath,!first);
                 }
             }
 
+            first = false;
+
+        }
+
+
+        File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
+        trace(meta.name + " @ " + meta.version + " released !");
+
+
+        
+        
+    }
+
+    public static function error(message : String, ?quit : Bool = true) : Void{
+        trace("ERROR : " + message);
+        if(quit){
+            trace("fix and resubmit, no changes made to metal json");
+            Sys.exit(1);
+        }
+    }
+
+    public static function errorInTheMiddle(message : String, meta : Metal, metalJsonPath : String, middle : Bool):Void{
+        if(middle){
+            trace("ERROR : " + message);        
+            File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
+            trace("The operation failed in the middle of submitting several haxelibs from " + meta.name + " @ " + meta.version + ", version changes has been saved to metal.json/haxelib.json, resubmiting would increase version again, a release of type 'patch' should probably be used");
+            Sys.exit(1);    
+        }else{
+            error(message);
         }
         
+    }
+
+    public static function print(message : String) : Void{
+        trace(message);   
     }
 
     public static  function fillInDetails(name : String, lib : SubLib) : SubLib{
