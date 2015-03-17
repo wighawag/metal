@@ -79,7 +79,7 @@ class Main extends mcli.CommandLine{
     	}
     	
 
-
+        //TODO support deeper hierarchy (ex: kit.glee kit.sunya ...)
         var keys = meta.libs.keys();
     	for (libName in keys){
     		var filePath = meta.classPath + "/" + libName;
@@ -112,6 +112,7 @@ class Main extends mcli.CommandLine{
             haxelibs.push(haxelib);
         } 
 
+        //TODO extraParams.hxml
         for(haxelib in haxelibs){
             var regex = new EReg("\\b" + haxelib.name + "\\..+", "");
             for(otherHaxelib in haxelibs){
