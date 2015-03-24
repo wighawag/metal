@@ -41,6 +41,12 @@ class Main extends mcli.CommandLine{
     **/
     public var type:ReleaseType;
 
+
+    /**
+        fake
+    **/
+    public var fake:Bool;
+
     /**
         Show this message.
     **/
@@ -169,12 +175,12 @@ class Main extends mcli.CommandLine{
         meta.releasenote = releaseNote;
         
         
-
-        var password = InputHelper.ask("Password ",true);
-
-
-
-
+        var password =  if(fake){
+            "";
+        }else{
+            InputHelper.ask("Password ",true);    
+        }
+        
 
         for(haxelib in haxelibs){
             //trace("generating haxelib zip for " + haxelib.name + "...");
@@ -203,38 +209,41 @@ class Main extends mcli.CommandLine{
         }
 
        
+        if(fake){
+            File.saveContent(tmpFolder + "/metal.json",Json.stringify(meta,null, "  "));
+            trace("created haxelib folder and zips as well as the would be 'metal.json' for version " + meta.version + " in " + tmpFolder);
+        }else{
 
-        var first = true;
-        for(haxelib in haxelibs){
-            var zipPath = tmpFolder + "/" + haxelib.name + ".zip";
+            var first = true;
+            for(haxelib in haxelibs){
+                var zipPath = tmpFolder + "/" + haxelib.name + ".zip";
 
-            trace("submiting " + haxelib.name + " @ " + haxelib.version + " to haxelib ...");
-            var process = new Process("haxelib", ["submit", zipPath, password]);
-            
-            var outputBytes = Bytes.alloc(100);
-            var numBytes = process.stdout.readBytes(outputBytes,0,100);
-            if (outputBytes.toString().indexOf("Invalid password") != -1){
-                process.kill();
-                errorInTheMiddle("wrong password",meta,metalJsonPath,!first);
-            }else{
-                trace(process.stdout.readAll().toString());
-                trace("... done");
-                var exitCode = process.exitCode();
-                if(exitCode != 0){
-                    errorInTheMiddle("exit code == " + exitCode + " while submitting " + zipPath,meta,metalJsonPath,!first);
+                trace("submiting " + haxelib.name + " @ " + haxelib.version + " to haxelib ...");
+                var process = new Process("haxelib", ["submit", zipPath, password]);
+                
+                var outputBytes = Bytes.alloc(100);
+                var numBytes = process.stdout.readBytes(outputBytes,0,100);
+                if (outputBytes.toString().indexOf("Invalid password") != -1){
+                    process.kill();
+                    errorInTheMiddle("wrong password",meta,metalJsonPath,!first);
+                }else{
+                    trace(process.stdout.readAll().toString());
+                    trace("... done");
+                    var exitCode = process.exitCode();
+                    if(exitCode != 0){
+                        errorInTheMiddle("exit code == " + exitCode + " while submitting " + zipPath,meta,metalJsonPath,!first);
+                    }
                 }
+
+                first = false;
+
             }
 
-            first = false;
 
+            File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
+            trace(meta.name + " @ " + meta.version + " released !");
         }
 
-
-        File.saveContent(metalJsonPath,Json.stringify(meta,null, "  "));
-        trace(meta.name + " @ " + meta.version + " released !");
-
-
-        
         
     }
 
