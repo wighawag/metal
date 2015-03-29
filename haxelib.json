@@ -4,8 +4,8 @@
 	"tags":["haxelib","utility"],
 	"description":"a METALib manager",
 	"contributors":["wighawag"],
-	"releasenote":"first version",
-	"version":"1.0.0",
+	"releasenote":"forgot to update run.n",
+	"version":"1.0.2",
 	"url":"https://github.com/wighawag/metal",
 	"classPath":"src",
 	"dependencies":{

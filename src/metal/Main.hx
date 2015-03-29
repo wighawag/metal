@@ -58,7 +58,8 @@ class Main extends mcli.CommandLine{
 
     public function runDefault()
     {
-    	var metalJsonPath = "metal.json";
+        var cwd = Sys.getCwd();
+    	var metalJsonPath = cwd + "/" + "metal.json";
     	if(!FileSystem.exists(metalJsonPath)){
     		metalJsonPath = "haxelib.json";
     		if(!FileSystem.exists(metalJsonPath)){
@@ -68,7 +69,7 @@ class Main extends mcli.CommandLine{
 
     	var meta : Metal = Json.parse(File.getContent(metalJsonPath));
 
-    	var tmpFolder = "_haxelibs_";
+    	var tmpFolder = cwd + "/" + "_haxelibs_";
         if(FileSystem.exists(tmpFolder)){
             try{
                 FileHelper.deleteDirectory(tmpFolder);  
@@ -88,7 +89,7 @@ class Main extends mcli.CommandLine{
         //TODO support deeper hierarchy (ex: kit.glee kit.sunya ...)
         var keys = meta.libs.keys();
     	for (libName in keys){
-    		var filePath = meta.classPath + "/" + libName;
+    		var filePath = cwd + "/" + meta.classPath + "/" + libName;
             if(!FileSystem.exists(filePath) || !FileSystem.isDirectory(filePath)){
                 Sys.println("no directory exist for  " + libName + " at " + filePath + " , removing the lib from  the list");
                 meta.libs.remove(libName);
@@ -97,7 +98,7 @@ class Main extends mcli.CommandLine{
 
         var fileNames = FileSystem.readDirectory(meta.classPath);
         for (fileName in fileNames){
-            var filePath = meta.classPath + "/" + fileName;
+            var filePath = cwd + "/" + meta.classPath + "/" + fileName;
             if(FileSystem.isDirectory(filePath)){
                 meta.libs[fileName] = fillInDetails(fileName, meta.libs[fileName]);
             }
@@ -123,7 +124,7 @@ class Main extends mcli.CommandLine{
             var regex = new EReg("\\b" + haxelib.name + "\\..+", "");
             for(otherHaxelib in haxelibs){
                 if(otherHaxelib.name != haxelib.name){
-                    var folderPath = meta.classPath + "/" + otherHaxelib.name;
+                    var folderPath = cwd + "/" + meta.classPath + "/" + otherHaxelib.name;
                     var filePaths = FileHelper.recursiveReadFolder(folderPath);
                     for(filePath in filePaths){
                         if(StringTools.endsWith(filePath, ".hx")){
@@ -196,7 +197,7 @@ class Main extends mcli.CommandLine{
             }
             haxelib.version = meta.version;
             haxelib.releasenote = meta.releasenote;
-            var filePath = meta.classPath + "/" + haxelib.name;
+            var filePath = cwd + "/" + meta.classPath + "/" + haxelib.name;
             var destination = tmpFolder + "/" + haxelib.name + "/src/" + haxelib.name;
             FileSystem.createDirectory(destination);
             FileHelper.copyFolder(filePath, destination);
