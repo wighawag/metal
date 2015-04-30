@@ -4,8 +4,8 @@ import haxe.DynamicAccess;
 typedef SubLib = {
 	tags : Array<String>,
 	description : String,
-	?dependencies : DynamicAccess<String>,
-	?url:String
+	?dependencies : Array<String>,
+	?url:String,
 };
 
 typedef Metal = {
@@ -16,5 +16,6 @@ typedef Metal = {
 	releasenote:String,
 	url : String,
 	libs : DynamicAccess<SubLib>,
-	classPath : String
+	classPath : String,
+	?dependencies : DynamicAccess<String>
 };

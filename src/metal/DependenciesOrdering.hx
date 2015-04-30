@@ -11,12 +11,21 @@ class CircularLib{
 		return dependencies.length;
 	}
 
-	public function new(haxelib : Haxelib){
+	public function new(haxelib : Haxelib, haxelibs : Array<Haxelib>){
+		var internalHaxelibs = new Map<String,Bool>();
+		for(internalHaxelib in haxelibs){
+			internalHaxelibs.set(internalHaxelib.name, true);
+		}
 		this.haxelib = haxelib;
 		this.dependencies = new Array();
 		for (dependency in haxelib.dependencies.keys()){
-			//trace("depends on " + dependency);
-			dependencies.push(dependency);
+
+			//skip exterior dependencies:
+			if(internalHaxelibs.exists(dependency)){
+				//trace("depends on " + dependency);
+				dependencies.push(dependency);
+			}
+			
 		}
 	}
 
@@ -41,7 +50,7 @@ class DependenciesOrdering{
 		libs = new Map();
 		for (haxelib in haxelibs){
 			//trace("adding " + haxelib.name);
-			libs.set(haxelib.name, new CircularLib(haxelib));
+			libs.set(haxelib.name, new CircularLib(haxelib, haxelibs));
 		}
 	}
 

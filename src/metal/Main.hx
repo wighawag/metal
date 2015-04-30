@@ -73,7 +73,6 @@ class Main extends mcli.CommandLine{
             }    
         }
         
-
     	var metalJsonPath = "metal.json";
     	if(!FileSystem.exists(metalJsonPath)){
     		metalJsonPath = "haxelib.json";
@@ -83,6 +82,33 @@ class Main extends mcli.CommandLine{
     	} 
 
     	var meta : Metal = Json.parse(File.getContent(metalJsonPath));
+
+        var extraParams = new Map<String,Array<String>>();
+        if(FileSystem.exists("extraParams.hxml")){
+            var extraParamsFileContent = File.getContent("extraParams.hxml");
+            var paramList = extraParamsFileContent.split("\n");
+            var currentLibName = null;
+            for(param in paramList){
+                var trimmedParam = param.trim();
+                if(trimmedParam.startsWith("#")){
+                    var libName = trimmedParam.substr(1).trim();
+                    if(meta.libs.exists(libName)){
+                        currentLibName = libName;
+                    }else{
+                        error("no lib with name " + libName);
+                    }
+                }else if(currentLibName != null){
+                    var extraParamsForLib = extraParams[currentLibName];
+                    if(extraParamsForLib == null){
+                        extraParamsForLib = new Array<String>();
+                        extraParams[currentLibName] = extraParamsForLib;
+                    }
+                    extraParamsForLib.push(trimmedParam);
+                }else{
+                    error("extraParams.hxml not following format (need libName as comment before)");
+                }
+            }
+        }
 
     	var tmpFolder = "_haxelibs_";
         if(FileSystem.exists(tmpFolder)){
@@ -115,7 +141,7 @@ class Main extends mcli.CommandLine{
         for (fileName in fileNames){
             var filePath = meta.classPath + "/" + fileName;
             if(FileSystem.isDirectory(filePath)){
-                meta.libs[fileName] = fillInDetails(fileName, meta.libs[fileName]);
+                meta.libs[fileName] = fillInDetails(fileName, meta.libs[fileName], meta);
             }
         }
 
@@ -129,12 +155,13 @@ class Main extends mcli.CommandLine{
 
         var haxelibs = new Array<Haxelib>();
 
+
+
         for(libName in meta.libs.keys()){
             var haxelib = HaxelibUtil.createHaxelibConfiguration(libName, meta,dummyReleaseNote, dummyVersion);//dummy release note/version as this will be change after getting input from user
             haxelibs.push(haxelib);
         } 
 
-        //TODO extraParams.hxml
         for(haxelib in haxelibs){
             var regex = new EReg("\\b" + haxelib.name + "\\..+", "");
             for(otherHaxelib in haxelibs){
@@ -164,9 +191,6 @@ class Main extends mcli.CommandLine{
         }
 
         var releaseNote = message != null ? message : InputHelper.ask("releaseNote");
-        
-
-
         var newVersion : Version = meta.version;
         while (newVersion.equals(meta.version)){
             var change = 
@@ -196,7 +220,10 @@ class Main extends mcli.CommandLine{
         }else{
             InputHelper.ask("Password ",true);    
         }
-        
+
+
+        var metaHaxelib = HaxelibUtil.createMetaHaxelib(meta, haxelibs);
+        haxelibs.push(metaHaxelib);
 
         for(haxelib in haxelibs){
             //trace("generating haxelib zip for " + haxelib.name + "...");
@@ -212,24 +239,31 @@ class Main extends mcli.CommandLine{
             }
             haxelib.version = meta.version;
             haxelib.releasenote = meta.releasenote;
-            var filePath = meta.classPath + "/" + haxelib.name;
-            var destination = tmpFolder + "/" + haxelib.name + "/src/" + haxelib.name;
-            FileSystem.createDirectory(destination);
-            FileHelper.copyFolder(filePath, destination);
+            if(haxelib.classPath != null){
+                var filePath = meta.classPath + "/" + haxelib.name;
+                var destination = tmpFolder + "/" + haxelib.name + "/src/" + haxelib.name;
+                FileSystem.createDirectory(destination);
+                FileHelper.copyFolder(filePath, destination);
+            }else{
+                FileSystem.createDirectory(tmpFolder + "/" + haxelib.name);
+            }
+            
             var haxelibFilePath = tmpFolder + "/" + haxelib.name + "/haxelib.json";
             var haxelibJsonString = haxe.Json.stringify(haxelib, "  ");
             File.saveContent(haxelibFilePath, haxelibJsonString);
+            if(extraParams[haxelib.name] != null){
+                File.saveContent(tmpFolder + "/" + haxelib.name + "/extraParams.hxml",extraParams[haxelib.name].join("\n"));    
+            }
             var zipPath = tmpFolder + "/" + haxelib.name + ".zip";
             ZipHelper.zipFolder(zipPath, tmpFolder +"/" + haxelib.name);
             
         }
 
-       
         if(fake){
             File.saveContent(tmpFolder + "/metal.json",Json.stringify(meta,null, "  "));
+           
             trace("created haxelib folder and zips as well as the would be 'metal.json' for version " + meta.version + " in " + tmpFolder);
         }else{
-
             var first = true;
             for(haxelib in haxelibs){
                 var zipPath = tmpFolder + "/" + haxelib.name + ".zip";
@@ -260,6 +294,7 @@ class Main extends mcli.CommandLine{
             trace(meta.name + " @ " + meta.version + " released !");
         }
 
+
         
     }
 
@@ -287,7 +322,7 @@ class Main extends mcli.CommandLine{
         trace(message);   
     }
 
-    public static  function fillInDetails(name : String, lib : SubLib) : SubLib{
+    public static  function fillInDetails(name : String, lib : SubLib, meta : Metal) : SubLib{
 
         var newLib = lib;
         if(newLib == null){
@@ -307,10 +342,14 @@ class Main extends mcli.CommandLine{
         
         if(newLib.tags == null){
             var tags = InputHelper.ask("tags (separated by commas)").split(",");
-            for (i in 0...tags.length){
-                tags[i] = tags[i].trim();
-            }    
-            newLib.tags = tags;
+            if(tags.length > 0 && tags[0] != ""){
+                for (i in 0...tags.length){
+                    tags[i] = tags[i].trim();
+                }    
+                newLib.tags = tags;    
+            }else{
+                newLib.tags = [];    
+            }
         }
         
         if(lib == null){
@@ -327,8 +366,21 @@ class Main extends mcli.CommandLine{
                 }else{
                     dependencies[split[0]] = "";
                 }
-            }    
-            newLib.dependencies = dependencies;
+            }   
+
+            var depArray = new Array<String>(); 
+            for (depName in dependencies.keys()){
+                depArray.push(depName);
+                var currentVersion = meta.dependencies[depName];
+                if(currentVersion != null){
+                    if(currentVersion != dependencies[depName]){
+                        error("conflicting version " + currentVersion + " vs " + dependencies[depName]);
+                    }
+                }else{
+                    meta.dependencies[depName] = dependencies[depName];
+                }
+            }
+            newLib.dependencies = depArray;
         }
         
         if(lib == null){

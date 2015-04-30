@@ -12,7 +12,7 @@ typedef Haxelib = {
 	releasenote : String,
 	version : String,
 	url : String,
-	classPath : String,
+	?classPath : String,
 	dependencies : HaxelibDependencies,
 	tags : Array<String>
 };
