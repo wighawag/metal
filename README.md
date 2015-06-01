@@ -1,4 +1,4 @@
-https://travis-ci.org/wighawag/metal.svg
+![travis status](https://travis-ci.org/wighawag/metal.svg)
 
 metal
 =====
