@@ -1,3 +1,5 @@
+https://travis-ci.org/wighawag/metal.svg
+
 metal
 =====
 
