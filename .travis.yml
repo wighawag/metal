@@ -1,0 +1,7 @@
+language: haxe
+haxe:
+  - "3.2.0"
+  - development
+
+script:
+  - haxe build.hxml
