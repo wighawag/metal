@@ -172,11 +172,12 @@ class Main extends mcli.CommandLine{
                         if(StringTools.endsWith(filePath, ".hx")){
                             var content = File.getContent(folderPath + "/" + filePath);
                             if(regex.match(content)){
-                                //trace("found " + haxelib.name + " in " + otherHaxelib.name);
+                                trace("found " + haxelib.name + " in " + otherHaxelib.name);
                                 if(otherHaxelib.dependencies == null){
                                     otherHaxelib.dependencies = {};
                                 }
                                 otherHaxelib.dependencies.set(haxelib.name, dummyVersion); //dummy
+                                break;
                             }
                         }
                     }
